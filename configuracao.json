@@ -1,0 +1,79 @@
+ [   {
+    "JuntaArq": false,
+    "ArquivoEntrada1": "SLA-INT-SANDRO(incident).xlsx", 
+    "ArquivoEntrada2": "Inside SLA (DOM & INT)(task_sla).xlsx",
+    "arquivoSaida": "INT_aberto.xlsx",
+    "NovaAba1": "INT_aberto",
+    "NovaAba2": "SLA",
+    "Filtro": "Clearance"
+    }
+    ,
+    {
+    "JuntaArq": true,
+    "ArquivoEntrada1": "Incidente Resolvidos ou Encerrados(incident).xlsx", 
+    "ArquivoEntrada2": "",
+    "arquivoSaida": "INT_encerrado.xlsx",
+    "NovaAba1": "INT_Encerrado",
+    "NovaAba2": "SLA",
+    "Filtro": "Clearance"
+    }
+    ,
+    {
+    "JuntaArq": false,   
+    "ArquivoEntrada1": "SLA-DOM-SANDRO(incident).xlsx",
+    "ArquivoEntrada2": "Inside SLA (DOM & INT)(task_sla).xlsx", 
+    "arquivoSaida": "DOM_aberto.xlsx",
+    "NovaAba1": "DOM_aberto",
+    "NovaAba2": "SLA",
+    "Filtro": ""
+    }
+    ,
+    {
+    "JuntaArq": true,
+    "ArquivoEntrada1": "Incidente Resolvidos ou Encerrados(incident).xlsx", 
+    "ArquivoEntrada2": "",
+    "arquivoSaida": "DOM_encerrado.xlsx",
+    "NovaAba1": "DOM_Encerrado",
+    "NovaAba2": "SLA",
+    "Filtro": ""
+    }
+    ,   
+    {   
+    "JuntaArq": true,
+    "ArquivoEntrada1": "SCTASK abertas(sc_task).xlsx", 
+    "ArquivoEntrada2": "",
+    "arquivoSaida": "SCTASK_aberto.xlsx",
+    "NovaAba1": "SCTASK_aberto",
+    "NovaAba2": "SLA",
+    "Filtro": ""
+    }
+    ,
+    {   
+    "JuntaArq": true,
+    "ArquivoEntrada1": "SCTASK fechadas(sc_task).xlsx", 
+    "ArquivoEntrada2": "",
+    "arquivoSaida": "SCTASK_encerrado.xlsx",
+    "NovaAba1": "SCTASK_Encerrado",
+    "NovaAba2": "SLA",
+    "Filtro": ""
+    },
+    { 
+    "JuntaArq": false,
+    "ArquivoEntrada1": "SLA-INT-SANDRO(incident).xlsx", 
+    "ArquivoEntrada2": "Inside SLA (DOM & INT)(task_sla).xlsx",
+    "arquivoSaida": "CSATH_aberto.xlsx",
+    "NovaAba1": "CSATH_aberto",
+    "NovaAba2": "SLA",
+    "Filtro": "CSATH"
+    }
+    ,
+    {
+    "JuntaArq": true,
+    "ArquivoEntrada1": "Incidente Resolvidos ou Encerrados(incident).xlsx", 
+    "ArquivoEntrada2": "",
+    "arquivoSaida": "CSATH_encerrado.xlsx",
+    "NovaAba1": "CSATH_Encerrado",
+    "NovaAba2": "SLA",
+    "Filtro": "CSATH"
+    }
+]

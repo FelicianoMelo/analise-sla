@@ -1,0 +1,18 @@
+{
+  "email_para": [
+    "destinatario@empresa.com"
+  ],
+  "email_cc": [
+    "gestor@empresa.com"
+  ],
+  "assunto": "Incidente ${numero_incidente} - Atualização",
+  "mensagem": "Olá,\n\nO incidente ${numero_incidente} foi atualizado.\nTempo total: ${tempo_total}.\nStatus: ${status}.\n\nAtenciosamente.",
+  "anexo": [
+    "C:/temp/relatorio.pdf"
+  ],
+  "variaveis": {
+    "numero_incidente": "INC123456",
+    "tempo_total": "5 horas",
+    "status": "Resolvido"
+  }
+}

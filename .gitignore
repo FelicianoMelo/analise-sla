@@ -1,0 +1,16 @@
+# Logs
+*.log
+
+# Planilhas e Dados
+*.xlsx
+*.numbers
+*.csv
+*.xls
+
+# Arquivos temporários do Python e do macOS
+__pycache__/
+*.pyc
+.DS_Store
+
+# (Opcional) ignore o json de configuração caso ele tenha dados sensíveis
+# configuracao.json
