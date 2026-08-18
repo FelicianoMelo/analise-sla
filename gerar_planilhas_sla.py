@@ -89,7 +89,7 @@ def colocar_cores_celulas(caminho_arquivo: Path, nome_aba: str, nome_coluna: str
     wb = load_workbook(caminho_arquivo)
     ws = wb[nome_aba]
 
-    valores_sla = {"otimo": 0, "medio": 0, "atencao": 0, "fora": 0}
+    valores_sla = {"otimo": 0, "medio": 0, "atencao": 0, "fora": 0, "TOTAL": 0}
 
     cores = {
         "verde": PatternFill("solid", start_color="C6EFCE", end_color="C6EFCE"),
@@ -124,6 +124,7 @@ def colocar_cores_celulas(caminho_arquivo: Path, nome_aba: str, nome_coluna: str
             celula.fill = cores["vermelho"]
             valores_sla["fora"] += 1
 
+    valores_sla["TOTAL"]= valores_sla["otimo"] + valores_sla["medio"] + valores_sla["atencao"] + valores_sla["fora"]
     wb.save(caminho_arquivo)
     wb.close()
 
@@ -179,6 +180,7 @@ def _aplicar_sla_resumo(ws, valores_sla: Dict[str, int]) -> None:
         (ultima_linha + 2, "Em andamento", valores_sla.get("medio", 0), "FFEB9C"),
         (ultima_linha + 3, "Em atenção", valores_sla.get("atencao", 0), "FFD699"),
         (ultima_linha + 4, "Fora do SLA", valores_sla.get("fora", 0), "FFC7CE"),
+        (ultima_linha + 5, "TOTAL GERAL", valores_sla.get("TOTAL", 0), "FFFFFF"),
     ]
 
     for linha, texto, valor, cor in configuracoes:
@@ -305,7 +307,7 @@ def processar_configuracoes() -> None:
         aba2 = item["NovaAba2"]
 
         # Estrutura padrão de SLA caso a contagem de células não seja executada
-        valores_sla_padrao = {"otimo": 0, "medio": 0, "atencao": 0, "fora": 0}
+        valores_sla_padrao = {"otimo": 0, "medio": 0, "atencao": 0, "fora": 0, "TOTAL":0}
 
         if "SCTASK" in arquivo1.name:
             planilhas_encerrados_aberto_sctask(arquivo1, arquivo_saida, aba1, aba2)

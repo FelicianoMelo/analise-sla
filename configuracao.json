@@ -64,7 +64,7 @@
     "arquivoSaida": "CSATH_aberto.xlsx",
     "NovaAba1": "CSATH_aberto",
     "NovaAba2": "SLA",
-    "Filtro": "CSATH"
+    "Filtro": ""
     }
     ,
     {
@@ -74,6 +74,6 @@
     "arquivoSaida": "CSATH_encerrado.xlsx",
     "NovaAba1": "CSATH_Encerrado",
     "NovaAba2": "SLA",
-    "Filtro": "CSATH"
+    "Filtro": ""
     }
 ]
