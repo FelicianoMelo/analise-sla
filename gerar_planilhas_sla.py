@@ -243,6 +243,9 @@ def cruzar_planilhas(arquivo1: Path, arquivo2: Path, arquivo_saida: Path, filtro
     df_plan3 = pd.merge(df_plan2, df_filtrado, on='Numero', how='right')
     df_plan3.insert(loc=0, column='% SLA Response', value='')
     df_plan3['% SLA Resolution'] = df_plan3['% SLA Resolution'].fillna(0)
+    df_plan3 = df_plan3.query("Estado != 'Fechados' and Estado != 'Cancelado'")
+
+
 
     with pd.ExcelWriter(arquivo_saida, engine='openpyxl') as writer:
         df_plan3.to_excel(writer, sheet_name=aba1, index=False)
