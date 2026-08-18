@@ -11,10 +11,12 @@ import pandas as pd
 from relat import ExcelReport
 import ajusta_painel_sla as aps
 
+from pathlib import Path
+
 # ==============================================================================
 # CONFIGURAÇÃO DE AMBIENTE E LOGGING
 # ==============================================================================
-PASTA_TRABALHO = Path("/Users/famj/projetos/analise_sla")
+PASTA_TRABALHO = Path.home()  / "projetos/analise_sla/"
 
 logger = logging.getLogger("SLA")
 logger.setLevel(logging.INFO)
@@ -171,6 +173,7 @@ def _aplicar_sla_resumo(ws, valores_sla: Dict[str, int]) -> None:
         ws[col].font = font_cabecalho
         ws[col].alignment = align_center
 
+
     configuracoes = [
         (ultima_linha + 1, "Dentro do SLA", valores_sla.get("otimo", 0), "C6EFCE"),
         (ultima_linha + 2, "Em andamento", valores_sla.get("medio", 0), "FFEB9C"),
@@ -189,11 +192,10 @@ def _aplicar_sla_resumo(ws, valores_sla: Dict[str, int]) -> None:
             cell.fill = fill_linha
             cell.alignment = align_center
 
-    for row in ws.iter_rows(min_row=1, max_row=5, min_col=4, max_col=5):
+    for row in ws.iter_rows(min_row=ultima_linha +1 , max_row=ultima_linha + 5 , min_col=1, max_col=2):
         for cell in row:
             cell.border = borda
-
-
+            
 # ==============================================================================
 # GERAÇÃO DE RELATÓRIOS
 # ==============================================================================
