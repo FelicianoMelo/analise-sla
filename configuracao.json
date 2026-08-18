@@ -5,7 +5,7 @@
     "arquivoSaida": "INT_aberto.xlsx",
     "NovaAba1": "INT_aberto",
     "NovaAba2": "SLA",
-    "Filtro": "Clearance"
+    "Filtro": ""
     }
     ,
     {
@@ -15,7 +15,7 @@
     "arquivoSaida": "INT_encerrado.xlsx",
     "NovaAba1": "INT_Encerrado",
     "NovaAba2": "SLA",
-    "Filtro": "Clearance"
+    "Filtro": ""
     }
     ,
     {
