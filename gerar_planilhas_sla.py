@@ -202,7 +202,7 @@ def _aplicar_sla_resumo(ws, valores_sla: Dict[str, int]) -> None:
 # ==============================================================================
 def gerar_relatorio_encerrados(caminho_arquivo: Path, aba1: str, aba2: str, df_filtrado: pd.DataFrame) -> None:
     relatorio = ExcelReport(arquivo=str(caminho_arquivo), sheet_name=aba2, linhas_em_branco=2)
-    df_agrupa1 = agrupar_por(df_filtrado, "IC afetado")
+    df_agrupa1 = agrupar_por(df_filtrado, "CI afetado")
     df_agrupa2 = agrupar_por(df_filtrado, "Resolvido por")
 
     relatorio.gerar([df_agrupa1, df_agrupa2])
@@ -211,8 +211,8 @@ def gerar_relatorio_encerrados(caminho_arquivo: Path, aba1: str, aba2: str, df_f
 
 def gerar_relatorio_aberto(caminho_arquivo: Path, aba1: str, aba2: str, df_filtrado: pd.DataFrame) -> None:
     relatorio = ExcelReport(arquivo=str(caminho_arquivo), sheet_name=aba2, linhas_em_branco=2)
-    df_agrupa1 = agrupar_por(df_filtrado, "IC afetado")
-    df_agrupa2 = agrupar_por(df_filtrado, "Atribuição a")
+    df_agrupa1 = agrupar_por(df_filtrado, "CI afetado")
+    df_agrupa2 = agrupar_por(df_filtrado, "Atribuído a")
 
     relatorio.gerar([df_agrupa1, df_agrupa2])
     aplicar_estilos_excel(caminho_arquivo, aba1)
@@ -221,7 +221,7 @@ def gerar_relatorio_aberto(caminho_arquivo: Path, aba1: str, aba2: str, df_filtr
 def gerar_relatorio_aberto_sctask(caminho_arquivo: Path, aba1: str, aba2: str, df_filtrado: pd.DataFrame) -> None:
     relatorio = ExcelReport(arquivo=str(caminho_arquivo), sheet_name=aba2, linhas_em_branco=2)
     df_agrupa1 = agrupar_por(df_filtrado, "Grupo de atribuição")
-    df_agrupa2 = agrupar_por(df_filtrado, "Atribuição a")
+    df_agrupa2 = agrupar_por(df_filtrado, "Atribuído a")
 
     relatorio.gerar([df_agrupa1, df_agrupa2])
     aplicar_estilos_excel(caminho_arquivo, aba1)
