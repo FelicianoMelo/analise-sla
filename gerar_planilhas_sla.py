@@ -11,13 +11,12 @@ import pandas as pd
 from relat import ExcelReport
 import ajusta_painel_sla as aps
 
-from pathlib import Path
 
 # ==============================================================================
 # CONFIGURAÇÃO DE AMBIENTE E LOGGING
 # ==============================================================================
-PASTA_TRABALHO = Path.home()  / "projetos/analise_sla/"
-
+PASTA_TRABALHO = Path.home()  / "projetos/analise-sla/"
+print(PASTA_TRABALHO)
 logger = logging.getLogger("SLA")
 logger.setLevel(logging.INFO)
 
@@ -168,7 +167,7 @@ def _aplicar_sla_resumo(ws, valores_sla: Dict[str, int]) -> None:
     letraA = f"A{ultima_linha}"
     letraB = f"B{ultima_linha}"
     # Cabeçalho
-    for col, texto in [(letraA, "SLA"), (letraB, "Quantidade")]:
+    for col, texto in [(letraA, "SLA"), (letraB, "Total")]:
         ws[col].value = texto
         ws[col].fill = fill_cabecalho
         ws[col].font = font_cabecalho
