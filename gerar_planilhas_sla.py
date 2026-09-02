@@ -37,7 +37,8 @@ if not logger.handlers:
 # Constantes de data
 DATA_ATUAL = datetime.now().strftime("%Y%m%d")
 DATA_ONTEM = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
-
+DATA_ATUAL_F = datetime.now().strftime("%d/%m/%Y")
+DATA_ONTEM_F = (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y")
 
 # ==============================================================================
 # FUNÇÕES DE MANIPULAÇÃO DE DATAFRAMES
@@ -216,6 +217,9 @@ def gerar_relatorio_aberto(caminho_arquivo: Path, aba1: str, aba2: str, df_filtr
 
     relatorio.gerar([df_agrupa1, df_agrupa2])
     aplicar_estilos_excel(caminho_arquivo, aba1)
+    
+    #gera a metricas para o campo CI afetado
+    gerar_ci_json(caminho_arquivo)
 
 
 def gerar_relatorio_aberto_sctask(caminho_arquivo: Path, aba1: str, aba2: str, df_filtrado: pd.DataFrame) -> None:
@@ -326,23 +330,84 @@ def processar_configuracoes() -> None:
             valores_sla = colocar_cores_celulas(arquivo_saida, aba1, '% SLA Resolution')
             aplicar_cores_sla_totais(arquivo_saida, aba1, valores_sla)
 
+def gerar_ci_json(
+    arquivo_excel,
+    arquivo_json="ci.json",
+    coluna_ci="CI afetado"
+):
+    """
+    Lê a coluna CI do Excel, remove duplicidades
+    e gera um arquivo JSON.
+
+    Args:
+        arquivo_excel (str): Caminho do arquivo Excel.
+        arquivo_json (str): Nome do arquivo JSON de saída.
+        coluna_ci (str): Nome da coluna contendo os CIs.
+    """
+
+    # Lê todas as abas
+    abas = pd.read_excel(
+        arquivo_excel,
+        sheet_name=[0] #lendo so a aba selecionada, para todoas substituir por None
+    )
+
+    cis = set()
+
+    # Coleta CIs únicos de todas as abas
+    for _, df in abas.items():
+        if coluna_ci in df.columns:
+            cis.update(
+                df[coluna_ci]
+                .dropna()
+                .astype(str)
+                .unique()
+            )
+
+    dados = [
+        {
+            "CI": ci,
+            "otimo": 0,
+            "medio": 0,
+            "atencao": 0,
+            "fora": 0,
+            "total": 0
+        }
+        for ci in sorted(cis)
+    ]
+
+    with open(arquivo_json, "w", encoding="utf-8") as f:
+        json.dump(
+            dados,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
+
+    print(
+        f"Arquivo '{arquivo_json}' atualizado com {len(dados)} CIs."
+    )
+
 
 def criar_planilha_total() -> None:
     arquivo_saida = PASTA_TRABALHO / f"{DATA_ATUAL}_Total.xlsx"
-
+    #df_INT_aberto_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_INT_aberto.xlsx")
+    #df_DON_aberto_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_DON_aberto.xlsx")
+    #df_INT_encerr_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_INT_encerrado.xlsx")
+    #df_DON_encerr_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_DON_encerrado.xlsx")
+                                 
     with pd.ExcelWriter(arquivo_saida, engine="openpyxl") as writer:
         pd.DataFrame().to_excel(writer, sheet_name="Visão Geral", index=False)
 
     wb = load_workbook(arquivo_saida)
     ws = wb["Visão Geral"]
-
+    
     # Criar painel Transporte Doméstico
     aps.criar_painel_sla(
         ws,
         coluna_inicial=2,
         titulo="TRANSPORTE DOMÉSTICO",
-        data_aberto=DATA_ATUAL,
-        data_encerrado=DATA_ONTEM,
+        data_aberto=DATA_ATUAL_F,
+        data_encerrado=DATA_ONTEM_F,
         atribuicoes={},
         resolvidos={},
         sla_otimo=0,
@@ -356,8 +421,8 @@ def criar_planilha_total() -> None:
         ws,
         coluna_inicial=12,
         titulo="CLEARANCE - TRANSPORTE INTERNACIONAL",
-        data_aberto=DATA_ATUAL,
-        data_encerrado=DATA_ONTEM,
+        data_aberto=DATA_ATUAL_F,
+        data_encerrado=DATA_ONTEM_F,
         atribuicoes={
             "Rafael Miranda Ferreira": 18,
             "Enoque Pinheiro": 10,
