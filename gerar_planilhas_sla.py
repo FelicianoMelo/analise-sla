@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import json
 import logging
 from pathlib import Path
+
 from typing import Dict, Any
 
 from openpyxl import load_workbook
@@ -390,11 +391,14 @@ def gerar_ci_json(
 
 def criar_planilha_total() -> None:
     arquivo_saida = PASTA_TRABALHO / f"{DATA_ATUAL}_Total.xlsx"
-    #df_INT_aberto_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_INT_aberto.xlsx")
-    #df_DON_aberto_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_DON_aberto.xlsx")
-    #df_INT_encerr_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_INT_encerrado.xlsx")
-    #df_DON_encerr_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_DON_encerrado.xlsx")
-                                 
+    # df_INT_aberto_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_INT_aberto.xlsx")
+    # df_DON_aberto_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_DON_aberto.xlsx")
+    # df_INT_encerr_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_INT_encerrado.xlsx")
+    # df_DON_encerr_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_DON_encerrado.xlsx")
+    
+    print(f"Gerando planilha total: {arquivo_saida.name}") 
+    # print(f"Planilhas de entrada: {df_INT_aberto_plan.shape}, {df_DON_aberto_plan.shape}, {df_INT_encerr_plan.shape}, {df_DON_encerr_plan.shape}") 
+    print(f"Data atual: {DATA_ATUAL_F}, Data ontem: {DATA_ONTEM_F}")                           
     with pd.ExcelWriter(arquivo_saida, engine="openpyxl") as writer:
         pd.DataFrame().to_excel(writer, sheet_name="Visão Geral", index=False)
 
