@@ -11,6 +11,7 @@ import pandas as pd
 
 from relat import ExcelReport
 import ajusta_painel_sla as aps
+import gerar_total_sla as gts
 
 
 # ==============================================================================
@@ -390,65 +391,7 @@ def gerar_ci_json(
 
 
 def criar_planilha_total() -> None:
-    arquivo_saida = PASTA_TRABALHO / f"{DATA_ATUAL}_Total.xlsx"
-    # df_INT_aberto_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_INT_aberto.xlsx")
-    # df_DON_aberto_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_DON_aberto.xlsx")
-    # df_INT_encerr_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_INT_encerrado.xlsx")
-    # df_DON_encerr_plan = pd.read_excel(PASTA_TRABALHO / f"{DATA_ATUAL}_DON_encerrado.xlsx")
-    
-    print(f"Gerando planilha total: {arquivo_saida.name}") 
-    # print(f"Planilhas de entrada: {df_INT_aberto_plan.shape}, {df_DON_aberto_plan.shape}, {df_INT_encerr_plan.shape}, {df_DON_encerr_plan.shape}") 
-    print(f"Data atual: {DATA_ATUAL_F}, Data ontem: {DATA_ONTEM_F}")                           
-    with pd.ExcelWriter(arquivo_saida, engine="openpyxl") as writer:
-        pd.DataFrame().to_excel(writer, sheet_name="Visão Geral", index=False)
-
-    wb = load_workbook(arquivo_saida)
-    ws = wb["Visão Geral"]
-    
-    # Criar painel Transporte Doméstico
-    aps.criar_painel_sla(
-        ws,
-        coluna_inicial=2,
-        titulo="TRANSPORTE DOMÉSTICO",
-        data_aberto=DATA_ATUAL_F,
-        data_encerrado=DATA_ONTEM_F,
-        atribuicoes={},
-        resolvidos={},
-        sla_otimo=0,
-        sla_medio=0,
-        sla_atencao=0,
-        sla_fora=0,
-    )
-
-    # Criar painel Clearance - Transporte Internacional
-    aps.criar_painel_sla(
-        ws,
-        coluna_inicial=12,
-        titulo="CLEARANCE - TRANSPORTE INTERNACIONAL",
-        data_aberto=DATA_ATUAL_F,
-        data_encerrado=DATA_ONTEM_F,
-        atribuicoes={
-            "Rafael Miranda Ferreira": 18,
-            "Enoque Pinheiro": 10,
-            "Victorio Bormolini": 1,
-            "ANTONIO BARBOSA": 1,
-        },
-        resolvidos={
-            "ANTONIO BARBOSA": 1,
-            "Victorio Bormolini": 1,
-        },
-        sla_otimo=0,
-        sla_medio=0,
-        sla_atencao=0,
-        sla_fora=0,
-        detalhe_otimo={"LAC-BR-3-CSATH": 3, "LAC-BR-3-ClearanceFormal": 2},
-        detalhe_medio={"LAC-BR-Clearance": 1, "LAC-BR-3-CSATH": 2},
-        detalhe_atencao={"LAC-BR-3-CSATH": 5},
-        detalhe_fora={"LAC-BR-Clearance": 16, "LAC-BR-3-CSATH": 1},
-    )
-
-    wb.save(arquivo_saida)
-    wb.close()
+    arquivo_saida = gts.gerar_planilha_total(pasta=PASTA_TRABALHO, prefixo=DATA_ATUAL)
     logger.info(f"Planilha resumo final '{arquivo_saida.name}' criada com sucesso!")
 
 
