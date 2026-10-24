@@ -11,6 +11,6 @@
 __pycache__/
 *.pyc
 .DS_Store
-
+.venv/
 # (Opcional) ignore o json de configuração caso ele tenha dados sensíveis
 # configuracao.json
