@@ -97,10 +97,10 @@ def colocar_cores_celulas(arquivo_saida, nome_aba, nome_coluna):
     }
 
     cores = {
-        "verde": PatternFill("solid", start_color="C6EFCE", end_color="C6EFCE"),
-        "amarelo": PatternFill("solid", start_color="FFEB9C", end_color="FFEB9C"),
-        "laranja": PatternFill("solid", start_color="FFD699", end_color="FFD699"),
-        "vermelho": PatternFill("solid", start_color="FFC7CE", end_color="FFC7CE"),
+        "verde": PatternFill("solid", start_color="E63223", end_color="E63223"),
+        "amarelo": PatternFill("solid", start_color="96E099", end_color="96E099"),
+        "laranja": PatternFill("solid", start_color="D77841", end_color="D77841"),
+        "vermelho": PatternFill("solid", start_color="F4C142", end_color="F4C142"),
     }
 
     # Encontrar a coluna pelo nome
@@ -126,15 +126,15 @@ def colocar_cores_celulas(arquivo_saida, nome_aba, nome_coluna):
         if valor is None:
             continue
 
-        if valor <= 45:
+        if valor < 50:
             celula.fill = cores["verde"]
             valores_sla["otimo"] += 1
 
-        elif valor <= 50:
+        elif valor < 75:
             celula.fill = cores["amarelo"]
             valores_sla["medio"] += 1
 
-        elif valor <= 99:
+        elif valor < 100:
             celula.fill = cores["laranja"]
             valores_sla["atencao"] += 1
 
@@ -542,10 +542,10 @@ def aplicar_sla(ws, valores_sla):
     cabecalho_sla(ws)
 
     configuracoes = [
-        ("D2", "Dentro do SLA", valores_sla["otimo"],   "C6EFCE"),
-        ("D3", "Em andamento",  valores_sla["medio"],   "FFEB9C"),
-        ("D4", "Em atenção",    valores_sla["atencao"], "FFD699"),
-        ("D5", "Fora do SLA",   valores_sla["fora"],    "FFC7CE"),
+        ("D2", "Dentro do SLA", valores_sla["otimo"],  "4CA154"),
+        ("D3", "Em andamento",  valores_sla["medio"],   "D77841"),
+        ("D4", "Em atenção",    valores_sla["atencao"], "F4C142"),
+        ("D5", "Fora do SLA",   valores_sla["fora"],    "E63223"),
     ]
 
     alinhamento = Alignment(horizontal="center", vertical="center")

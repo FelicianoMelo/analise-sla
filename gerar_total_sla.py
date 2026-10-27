@@ -129,11 +129,11 @@ def classificar_sla(percentual: Any) -> str:
     except (ValueError, TypeError):
         return "fora"
 
-    if val <= 45.0:
+    if val < 50.00:
         return "otimo"
-    elif val <= 50.0:
+    elif val < 75.00:
         return "medio"
-    elif val <= 99.0:
+    elif val < 100.00:
         return "atencao"
     else:
         return "fora"

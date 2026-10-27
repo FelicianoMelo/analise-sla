@@ -94,10 +94,10 @@ def colocar_cores_celulas(caminho_arquivo: Path, nome_aba: str, nome_coluna: str
     valores_sla = {"otimo": 0, "medio": 0, "atencao": 0, "fora": 0, "TOTAL": 0}
 
     cores = {
-        "verde": PatternFill("solid", start_color="C6EFCE", end_color="C6EFCE"),
-        "amarelo": PatternFill("solid", start_color="FFEB9C", end_color="FFEB9C"),
-        "laranja": PatternFill("solid", start_color="FFD699", end_color="FFD699"),
-        "vermelho": PatternFill("solid", start_color="FFC7CE", end_color="FFC7CE"),
+        "verde": PatternFill("solid", start_color="4CA154", end_color="4CA154"),
+        "amarelo": PatternFill("solid", start_color="D77841", end_color="D77841"),
+        "laranja": PatternFill("solid", start_color="F4C142", end_color="F4C142"),
+        "vermelho": PatternFill("solid", start_color="E63223", end_color="E63223"),
     }
 
     col_idx = next((cell.column for cell in ws[1] if cell.value == nome_coluna), None)
@@ -113,13 +113,13 @@ def colocar_cores_celulas(caminho_arquivo: Path, nome_aba: str, nome_coluna: str
         if valor is None:
             continue
 
-        if valor <= 45:
+        if valor < 50:
             celula.fill = cores["verde"]
             valores_sla["otimo"] += 1
-        elif valor <= 50:
+        elif valor < 75:
             celula.fill = cores["amarelo"]
             valores_sla["medio"] += 1
-        elif valor <= 99:
+        elif valor < 100:
             celula.fill = cores["laranja"]
             valores_sla["atencao"] += 1
         else:
@@ -178,10 +178,10 @@ def _aplicar_sla_resumo(ws, valores_sla: Dict[str, int]) -> None:
 
 
     configuracoes = [
-        (ultima_linha + 1, "Dentro do SLA", valores_sla.get("otimo", 0), "C6EFCE"),
-        (ultima_linha + 2, "Em andamento", valores_sla.get("medio", 0), "FFEB9C"),
-        (ultima_linha + 3, "Em atenção", valores_sla.get("atencao", 0), "FFD699"),
-        (ultima_linha + 4, "Fora do SLA", valores_sla.get("fora", 0), "FFC7CE"),
+        (ultima_linha + 1, "Dentro do SLA", valores_sla.get("otimo", 0), "4ca154"),
+        (ultima_linha + 2, "Em andamento", valores_sla.get("medio", 0), "d77841"),
+        (ultima_linha + 3, "Em atenção", valores_sla.get("atencao", 0), "f4c142"),
+        (ultima_linha + 4, "Fora do SLA", valores_sla.get("fora", 0), "e63223"),
         (ultima_linha + 5, "TOTAL GERAL", valores_sla.get("TOTAL", 0), "FFFFFF"),
     ]
 
