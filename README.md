@@ -9,6 +9,7 @@ O sistema cruza dados de incidentes e tarefas (SCTASK), aplica filtros baseados 
 ### Scripts Principais
 
 - **`gerar_planilhas_sla.py`**: É o script principal (core) do projeto. Ele lê as configurações de `configuracao.json`, carrega as planilhas base, filtra os dados, cruza informações, aplica estilos, calcula os indicadores de SLA (Ótimo, Médio, Atenção, Fora do SLA) e gera os arquivos finais de saída, incluindo o painel de Visão Geral.
+- **`gerar_total_sla.py`**: Gera o painel consolidado a partir dos arquivos diários. Lê totais e agrupamentos da aba `SLA` de cada planilha e consulta a aba de registros apenas para detalhar os ICs por faixa de SLA.
 - **`gerar_planilhas.py`**: Versão alternativa ou anterior do script principal de geração de relatórios.
 - **`configuracao.json`**: Arquivo de configuração em formato JSON que define as regras de cruzamento de dados. Determina quais arquivos de entrada ler, se os dados devem ser mesclados ou cruzados, os filtros a aplicar (ex: "Clearance", "CSATH") e os nomes dos arquivos e abas de saída.
 - **`app_sla.py`**: Uma interface gráfica simples construída com `customtkinter` que permite ao usuário selecionar um diretório e listar todos os arquivos `.xlsx` contidos nele.

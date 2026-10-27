@@ -13,7 +13,6 @@ from relat import ExcelReport
 import ajusta_painel_sla as aps
 import gerar_total_sla as gts
 
-
 # ==============================================================================
 # CONFIGURAÇÃO DE AMBIENTE E LOGGING
 # ==============================================================================
@@ -215,7 +214,11 @@ def gerar_relatorio_encerrados(caminho_arquivo: Path, aba1: str, aba2: str, df_f
 def gerar_relatorio_aberto(caminho_arquivo: Path, aba1: str, aba2: str, df_filtrado: pd.DataFrame) -> None:
     relatorio = ExcelReport(arquivo=str(caminho_arquivo), sheet_name=aba2, linhas_em_branco=2)
     df_agrupa1 = agrupar_por(df_filtrado, "CI afetado")
-    df_agrupa2 = agrupar_por(df_filtrado, "Atribuído a")
+    coluna_atribuicao = next(
+        (coluna for coluna in ("Atribuição a", "Atribuído a") if coluna in df_filtrado.columns),
+        "Atribuído a",
+    )
+    df_agrupa2 = agrupar_por(df_filtrado, coluna_atribuicao)
 
     relatorio.gerar([df_agrupa1, df_agrupa2])
     aplicar_estilos_excel(caminho_arquivo, aba1)
@@ -227,7 +230,11 @@ def gerar_relatorio_aberto(caminho_arquivo: Path, aba1: str, aba2: str, df_filtr
 def gerar_relatorio_aberto_sctask(caminho_arquivo: Path, aba1: str, aba2: str, df_filtrado: pd.DataFrame) -> None:
     relatorio = ExcelReport(arquivo=str(caminho_arquivo), sheet_name=aba2, linhas_em_branco=2)
     df_agrupa1 = agrupar_por(df_filtrado, "Grupo de atribuição")
-    df_agrupa2 = agrupar_por(df_filtrado, "Atribuído a")
+    coluna_atribuicao = next(
+        (coluna for coluna in ("Atribuição a", "Atribuído a") if coluna in df_filtrado.columns),
+        "Atribuído a",
+    )
+    df_agrupa2 = agrupar_por(df_filtrado, coluna_atribuicao)
 
     relatorio.gerar([df_agrupa1, df_agrupa2])
     aplicar_estilos_excel(caminho_arquivo, aba1)

@@ -3,18 +3,18 @@
 """
 gerar_total_sla.py
 ==================
-Gera a planilha consolidada de SLA (Visão Geral / Total) idêntica à imagem de referência,
+Gera a planilha consolidada de SLA (Visão Geral / Total) usando a imagem apenas como referência,
 contendo os 3 painéis:
   1. TRANSPORTE DOMÉSTICO
   2. CLEARANCE – TRANSPORTE INTERNACIONAL
   3. SOLICITAÇÕES ( SCTASKs )
 
-Os dados são lidos dinamicamente dos arquivos individuais gerados pelo script
-'gerar_planilhas_sla.py' (*_DOM_aberto.xlsx, *_DOM_encerrado.xlsx, *_INT_aberto.xlsx,
-*_INT_encerrado.xlsx, *_SCTASK_aberto.xlsx, *_SCTASK_encerrado.xlsx), NUNCA do arquivo
-*_Total.xlsx anterior.
+Totais e agrupamentos são lidos da aba 'SLA' dos arquivos individuais gerados pelo
+script 'gerar_planilhas_sla.py'. Os detalhes por IC são lidos da aba de registros.
+O arquivo '*_Total.xlsx' anterior nunca é usado como fonte.
 """
 
+import argparse
 from datetime import datetime, timedelta
 import glob
 import logging
@@ -129,11 +129,11 @@ def classificar_sla(percentual: Any) -> str:
     except (ValueError, TypeError):
         return "fora"
 
-    if val < 50.00:
+    if val < 50.0:
         return "otimo"
-    elif val < 75.00:
+    elif val < 75.0:
         return "medio"
-    elif val < 100.00:
+    elif val < 100.0:
         return "atencao"
     else:
         return "fora"
@@ -174,75 +174,174 @@ def obter_prefixo_mais_recente(pasta: Path) -> str:
     return hoje_str
 
 
+def ler_aba_dados(caminho: Path, nome_aba: str) -> pd.DataFrame:
+    """Lê uma aba pelo nome e informa claramente quando arquivo ou aba não existem."""
+    if not caminho.exists():
+        raise FileNotFoundError(f"Arquivo de dados não encontrado: {caminho}")
+
+    with pd.ExcelFile(caminho) as arquivo_excel:
+        if nome_aba not in arquivo_excel.sheet_names:
+            abas_disponiveis = ", ".join(arquivo_excel.sheet_names)
+            raise ValueError(
+                f"A aba '{nome_aba}' não existe em '{caminho.name}'. "
+                f"Abas disponíveis: {abas_disponiveis}"
+            )
+        return pd.read_excel(arquivo_excel, sheet_name=nome_aba)
+
+
+def ler_tabela_sla(
+    caminho: Path,
+    nomes_cabecalho: Tuple[str, ...],
+) -> Tuple[Dict[str, int], int]:
+    """Lê uma tabela de agrupamento na aba SLA e retorna seus itens e total."""
+    if not caminho.exists():
+        raise FileNotFoundError(f"Arquivo de dados não encontrado: {caminho}")
+
+    wb = openpyxl.load_workbook(caminho, read_only=True, data_only=True)
+    try:
+        if "SLA" not in wb.sheetnames:
+            raise ValueError(f"A aba 'SLA' não existe em '{caminho.name}'.")
+
+        ws = wb["SLA"]
+        linha_cabecalho = None
+        for numero_linha, linha in enumerate(ws.iter_rows(values_only=True), start=1):
+            nome = str(linha[0]).strip() if linha and linha[0] is not None else ""
+            total = str(linha[1]).strip() if len(linha) > 1 and linha[1] is not None else ""
+            if nome in nomes_cabecalho and total.casefold() == "total":
+                linha_cabecalho = numero_linha
+                break
+
+        if linha_cabecalho is None:
+            raise ValueError(
+                f"Tabela '{' / '.join(nomes_cabecalho)}' não encontrada "
+                f"na aba 'SLA' de '{caminho.name}'."
+            )
+
+        itens: Dict[str, int] = {}
+        total_geral = 0
+        encontrou_total = False
+        for linha in ws.iter_rows(
+            min_row=linha_cabecalho + 1,
+            max_col=2,
+            values_only=True,
+        ):
+            nome = linha[0] if linha else None
+            valor = linha[1] if len(linha) > 1 else None
+            if nome is None and valor is None:
+                break
+            nome = str(nome).strip() if nome is not None else ""
+            if nome == "TOTAL GERAL":
+                total_geral = int(valor or 0)
+                encontrou_total = True
+                break
+            if nome:
+                if not isinstance(valor, (int, float)):
+                    raise ValueError(
+                        f"Contagem inválida para '{nome}' na aba 'SLA' "
+                        f"de '{caminho.name}': {valor!r}"
+                    )
+                itens[nome] = int(valor)
+
+        total = total_geral if encontrou_total else sum(itens.values())
+        if total != sum(itens.values()):
+            raise ValueError(
+                f"O total da tabela '{' / '.join(nomes_cabecalho)}' não confere "
+                f"com os itens em '{caminho.name}'."
+            )
+        return itens, total
+    finally:
+        wb.close()
+
+
+def ler_resumo_sla(caminho: Path) -> Dict[str, int]:
+    """Lê a distribuição por faixa de SLA da tabela de resumo da aba SLA."""
+    resumo, total = ler_tabela_sla(caminho, ("SLA",))
+    if not resumo:
+        raise ValueError(f"Resumo de faixas de SLA não encontrado em '{caminho.name}'.")
+
+    nomes_faixas = {
+        "Dentro do SLA": "otimo",
+        "Em andamento": "medio",
+        "Em atenção": "atencao",
+        "Fora do SLA": "fora",
+    }
+    faixas_ausentes = set(nomes_faixas).difference(resumo)
+    if faixas_ausentes:
+        raise ValueError(
+            f"Faixas de SLA ausentes em '{caminho.name}': "
+            f"{', '.join(sorted(faixas_ausentes))}"
+        )
+    resultado = {categoria: 0 for categoria in nomes_faixas.values()}
+    for nome, categoria in nomes_faixas.items():
+        resultado[categoria] = resumo[nome]
+    if sum(resultado.values()) != total:
+        raise ValueError(f"O resumo das faixas de SLA não confere em '{caminho.name}'.")
+    resultado["total"] = total
+    return resultado
+
+
+def ler_detalhes_por_ic(
+    caminho: Path,
+    nome_aba: str,
+    faixas_sla: Dict[str, int],
+) -> Dict[str, Dict[str, int]]:
+    """Agrupa os registros detalhados por IC e valida as faixas contra a aba SLA."""
+    df = ler_aba_dados(caminho, nome_aba)
+    col_sla = next((c for c in df.columns if "% SLA Resolution" in str(c)), None)
+    if col_sla is None or "IC afetado" not in df.columns:
+        raise ValueError(
+            f"A aba '{nome_aba}' de '{caminho.name}' precisa conter "
+            "'% SLA Resolution' e 'IC afetado'."
+        )
+
+    df["cat_sla"] = df[col_sla].apply(classificar_sla)
+    detalhes: Dict[str, Dict[str, int]] = {}
+    for categoria in ("otimo", "medio", "atencao", "fora"):
+        registros_categoria = df["cat_sla"] == categoria
+        total_categoria = int(registros_categoria.sum())
+        if total_categoria != faixas_sla[categoria]:
+            raise ValueError(
+                f"A contagem '{categoria}' da aba '{nome_aba}' "
+                f"({total_categoria}) não confere com a aba 'SLA' "
+                f"({faixas_sla[categoria]}) em '{caminho.name}'."
+            )
+        detalhes[categoria] = (
+            df.loc[registros_categoria, "IC afetado"]
+            .dropna()
+            .value_counts()
+            .to_dict()
+        )
+    return detalhes
+
+
 def carregar_dados_dom(pasta: Path, prefixo: str) -> Dict[str, Any]:
     """Extrai os dados de Transporte Doméstico a partir dos arquivos DOM."""
     arq_aberto = pasta / f"{prefixo}_DOM_aberto.xlsx"
     arq_encerrado = pasta / f"{prefixo}_DOM_encerrado.xlsx"
 
-    atribuicoes = {}
-    sla_otimo = 0
-    sla_medio = 0
-    sla_atencao = 0
-    sla_fora = 0
-    detalhes = {"otimo": {}, "medio": {}, "atencao": {}, "fora": {}}
-    sla_total = 0
+    atribuicoes, total_atribuidos = ler_tabela_sla(
+        arq_aberto, ("Atribuído a", "Atribuição a")
+    )
+    faixas_sla = ler_resumo_sla(arq_aberto)
+    detalhes = ler_detalhes_por_ic(arq_aberto, "DOM_aberto", faixas_sla)
 
-    if arq_aberto.exists():
-        try:
-            df = pd.read_excel(arq_aberto, sheet_name=0)
-            if not df.empty:
-                if "Atribuição a" in df.columns:
-                    s_atrib = df["Atribuição a"].dropna().value_counts()
-                    atribuicoes = s_atrib.to_dict()
-
-                col_sla = next((c for c in df.columns if "% SLA Resolution" in str(c)), None)
-                if col_sla:
-                    df["cat_sla"] = df[col_sla].apply(classificar_sla)
-                    sla_total = len(df)
-                    for cat in ["otimo", "medio", "atencao", "fora"]:
-                        sub = df[df["cat_sla"] == cat]
-                        if not sub.empty:
-                            if cat == "otimo":
-                                sla_otimo = len(sub)
-                            elif cat == "medio":
-                                sla_medio = len(sub)
-                            elif cat == "atencao":
-                                sla_atencao = len(sub)
-                            elif cat == "fora":
-                                sla_fora = len(sub)
-
-                            if "IC afetado" in sub.columns:
-                                s_ic = sub["IC afetado"].dropna().value_counts()
-                                detalhes[cat] = s_ic.to_dict()
-        except Exception as e:
-            logger.error(f"Erro ao ler {arq_aberto.name}: {e}")
-
-    resolvidos = {}
-    total_encerrados = 0
-    if arq_encerrado.exists():
-        try:
-            df_enc = pd.read_excel(arq_encerrado, sheet_name=0)
-            if not df_enc.empty:
-                col_res = next((c for c in ["Resolvido por", "Atribuição a"] if c in df_enc.columns), None)
-                if col_res:
-                    resolvidos = df_enc[col_res].dropna().value_counts().to_dict()
-                total_encerrados = len(df_enc)
-        except Exception as e:
-            logger.error(f"Erro ao ler {arq_encerrado.name}: {e}")
+    resolvidos, total_encerrados = ler_tabela_sla(
+        arq_encerrado, ("Resolvido por", "Atribuído a", "Atribuição a")
+    )
 
     return {
         "atribuicoes": atribuicoes,
-        "total_atribuidos": sum(atribuicoes.values()),
+        "total_atribuidos": total_atribuidos,
         "resolvidos": resolvidos,
         "total_resolvidos": total_encerrados,
-        "sla_total": sla_total if sla_total > 0 else (sla_otimo + sla_medio + sla_atencao + sla_fora),
-        "sla_otimo": sla_otimo,
+        "sla_total": faixas_sla["total"],
+        "sla_otimo": faixas_sla["otimo"],
         "detalhe_otimo": detalhes["otimo"],
-        "sla_medio": sla_medio,
+        "sla_medio": faixas_sla["medio"],
         "detalhe_medio": detalhes["medio"],
-        "sla_atencao": sla_atencao,
+        "sla_atencao": faixas_sla["atencao"],
         "detalhe_atencao": detalhes["atencao"],
-        "sla_fora": sla_fora,
+        "sla_fora": faixas_sla["fora"],
         "detalhe_fora": detalhes["fora"],
     }
 
@@ -257,70 +356,32 @@ def carregar_dados_int(pasta: Path, prefixo: str) -> Dict[str, Any]:
     if not arq_encerrado.exists():
         arq_encerrado = pasta / f"{prefixo}_CSATH_encerrado.xlsx"
 
-    atribuicoes = {}
-    sla_otimo = 0
-    sla_medio = 0
-    sla_atencao = 0
-    sla_fora = 0
-    detalhes = {"otimo": {}, "medio": {}, "atencao": {}, "fora": {}}
-    sla_total = 0
+    nome_aba_aberto = (
+        "INT_aberto" if arq_aberto.name.endswith("_INT_aberto.xlsx") else "CSATH_aberto"
+    )
+    atribuicoes, total_atribuidos = ler_tabela_sla(
+        arq_aberto, ("Atribuído a", "Atribuição a")
+    )
+    faixas_sla = ler_resumo_sla(arq_aberto)
+    detalhes = ler_detalhes_por_ic(arq_aberto, nome_aba_aberto, faixas_sla)
 
-    if arq_aberto.exists():
-        try:
-            df = pd.read_excel(arq_aberto, sheet_name=0)
-            if not df.empty:
-                if "Atribuição a" in df.columns:
-                    s_atrib = df["Atribuição a"].dropna().value_counts()
-                    atribuicoes = s_atrib.to_dict()
-
-                col_sla = next((c for c in df.columns if "% SLA Resolution" in str(c)), None)
-                if col_sla:
-                    df["cat_sla"] = df[col_sla].apply(classificar_sla)
-                    sla_total = len(df)
-                    for cat in ["otimo", "medio", "atencao", "fora"]:
-                        sub = df[df["cat_sla"] == cat]
-                        if not sub.empty:
-                            if cat == "otimo":
-                                sla_otimo = len(sub)
-                            elif cat == "medio":
-                                sla_medio = len(sub)
-                            elif cat == "atencao":
-                                sla_atencao = len(sub)
-                            elif cat == "fora":
-                                sla_fora = len(sub)
-
-                            if "IC afetado" in sub.columns:
-                                s_ic = sub["IC afetado"].dropna().value_counts()
-                                detalhes[cat] = s_ic.to_dict()
-        except Exception as e:
-            logger.error(f"Erro ao ler {arq_aberto.name}: {e}")
-
-    resolvidos = {}
-    total_encerrados = 0
-    if arq_encerrado.exists():
-        try:
-            df_enc = pd.read_excel(arq_encerrado, sheet_name=0)
-            if not df_enc.empty:
-                col_res = next((c for c in ["Resolvido por", "Atribuição a"] if c in df_enc.columns), None)
-                if col_res:
-                    resolvidos = df_enc[col_res].dropna().value_counts().to_dict()
-                total_encerrados = len(df_enc)
-        except Exception as e:
-            logger.error(f"Erro ao ler {arq_encerrado.name}: {e}")
+    resolvidos, total_encerrados = ler_tabela_sla(
+        arq_encerrado, ("Resolvido por", "Atribuído a", "Atribuição a")
+    )
 
     return {
         "atribuicoes": atribuicoes,
-        "total_atribuidos": sum(atribuicoes.values()),
+        "total_atribuidos": total_atribuidos,
         "resolvidos": resolvidos,
         "total_resolvidos": total_encerrados,
-        "sla_total": sla_total if sla_total > 0 else (sla_otimo + sla_medio + sla_atencao + sla_fora),
-        "sla_otimo": sla_otimo,
+        "sla_total": faixas_sla["total"],
+        "sla_otimo": faixas_sla["otimo"],
         "detalhe_otimo": detalhes["otimo"],
-        "sla_medio": sla_medio,
+        "sla_medio": faixas_sla["medio"],
         "detalhe_medio": detalhes["medio"],
-        "sla_atencao": sla_atencao,
+        "sla_atencao": faixas_sla["atencao"],
         "detalhe_atencao": detalhes["atencao"],
-        "sla_fora": sla_fora,
+        "sla_fora": faixas_sla["fora"],
         "detalhe_fora": detalhes["fora"],
     }
 
@@ -330,114 +391,23 @@ def carregar_dados_sctask(pasta: Path, prefixo: str) -> Dict[str, Any]:
     arq_aberto = pasta / f"{prefixo}_SCTASK_aberto.xlsx"
     arq_encerrado = pasta / f"{prefixo}_SCTASK_encerrado.xlsx"
 
-    atribuicoes = {}
-    grupos = {}
-    total_sctasks = 0
+    atribuicoes, total_atribuidos = ler_tabela_sla(
+        arq_aberto, ("Atribuído a", "Atribuição a")
+    )
+    grupos, total_sctasks = ler_tabela_sla(arq_aberto, ("Grupo de atribuição",))
 
-    if arq_aberto.exists():
-        try:
-            df = pd.read_excel(arq_aberto, sheet_name=0)
-            if not df.empty:
-                total_sctasks = len(df)
-                if "Atribuição a" in df.columns:
-                    s_atrib = df["Atribuição a"].dropna().value_counts()
-                    atribuicoes = s_atrib.to_dict()
-
-                if "Grupo de atribuição" in df.columns:
-                    s_grp = df["Grupo de atribuição"].dropna().value_counts()
-                    grupos = s_grp.to_dict()
-        except Exception as e:
-            logger.error(f"Erro ao ler {arq_aberto.name}: {e}")
-
-    resolvidos = {}
-    total_encerrados = 0
-    if arq_encerrado.exists():
-        try:
-            df_enc = pd.read_excel(arq_encerrado, sheet_name=0)
-            if not df_enc.empty:
-                col_res = next((c for c in ["Resolvido por", "Atribuição a"] if c in df_enc.columns), None)
-                if col_res:
-                    resolvidos = df_enc[col_res].dropna().value_counts().to_dict()
-                total_encerrados = len(df_enc)
-        except Exception as e:
-            logger.error(f"Erro ao ler {arq_encerrado.name}: {e}")
+    resolvidos, total_encerrados = ler_tabela_sla(
+        arq_encerrado,
+        ("Resolvido por", "Atribuído a", "Atribuição a"),
+    )
 
     return {
         "atribuicoes": atribuicoes,
-        "total_atribuidos": sum(atribuicoes.values()),
+        "total_atribuidos": total_atribuidos,
         "resolvidos": resolvidos,
         "total_resolvidos": total_encerrados,
         "total_sctasks": total_sctasks,
         "grupos": grupos,
-    }
-
-
-def obter_dados_mock_imagem() -> Dict[str, Any]:
-    """Retorna os dados exatos contidos na imagem de referência para teste/demonstração."""
-    return {
-        "prefixo": "20261022",
-        "dom": {
-            "atribuicoes": {},
-            "total_atribuidos": 0,
-            "resolvidos": {},
-            "total_resolvidos": 0,
-            "sla_total": 1,
-            "sla_otimo": 0,
-            "detalhe_otimo": {},
-            "sla_medio": 0,
-            "detalhe_medio": {},
-            "sla_atencao": 0,
-            "detalhe_atencao": {},
-            "sla_fora": 1,
-            "detalhe_fora": {"LAC-BR-3-GIS": 1},
-        },
-        "int": {
-            "atribuicoes": {
-                "Enoque Pinheiro": 21,
-                "Rafael Miranda Ferreira": 15,
-            },
-            "total_atribuidos": 36,
-            "resolvidos": {},
-            "total_resolvidos": 0,
-            "sla_total": 36,
-            "sla_otimo": 5,
-            "detalhe_otimo": {
-                "LAC-BR-Clearance": 3,
-                "LAC-BR-3-CSATH": 2,
-            },
-            "sla_medio": 0,
-            "detalhe_medio": {},
-            "sla_atencao": 1,
-            "detalhe_atencao": {
-                "LAC-BR-Clearance": 1,
-            },
-            "sla_fora": 30,
-            "detalhe_fora": {
-                "LAC-BR-3-CSATH": 19,
-                "LAC-BR-Clearance": 9,
-                "LAC-BR-3-ClearanceFormal": 2,
-            },
-        },
-        "sctask": {
-            "atribuicoes": {
-                "Victorio Bormolini": 1,
-                "Leandro Amorim": 1,
-                "Diego Magalhaes": 1,
-                "Fernando Junior": 1,
-                "Duvanir Trigo": 8,
-            },
-            "total_atribuidos": 12,
-            "resolvidos": {},
-            "total_resolvidos": 0,
-            "total_sctasks": 13,
-            "grupos": {
-                "FXE_Dev_LAC_BR_clearanceL3": 1,
-                "FXE_Dev_LAC_BR_gisl3": 2,
-                "FXE_Dev_LAC_BR_TMSL3": 1,
-                "FXE_Dev_LAC_BR_MSAFCTEL3": 1,
-                "( FXE_SA_LAC_FXESALACADMINL3 )": 8,
-            },
-        },
     }
 
 
@@ -1344,23 +1314,22 @@ def gerar_planilha_total(
 # ==============================================================================
 def main():
     logger.info("Iniciando execução do script gerar_total_sla.py...")
-
-    args = sys.argv[1:]
-    prefixo = None
-    dados_custom = None
-
-    if "--imagem" in args or "--demo" in args or "--mock" in args:
-        logger.info("Modo de demonstração (--imagem / --demo) ativado. Utilizando dados exatos da imagem de referência.")
-        dados_custom = obter_dados_mock_imagem()
-        prefixo = dados_custom["prefixo"]
-    elif args:
-        prefixo = args[0]
+    parser = argparse.ArgumentParser(
+        description="Gera a planilha Total SLA a partir das abas dos arquivos diários."
+    )
+    parser.add_argument(
+        "prefixo",
+        nargs="?",
+        help="Prefixo de data dos arquivos de entrada, no formato YYYYMMDD.",
+    )
+    args = parser.parse_args()
+    prefixo = args.prefixo
+    if prefixo:
         logger.info(f"Prefixo recebido via linha de comando: {prefixo}")
 
     caminho_arquivo = gerar_planilha_total(
         pasta=PASTA_TRABALHO,
         prefixo=prefixo,
-        dados_custom=dados_custom,
     )
     print(f"\n[SUCESSO] Planilha Total SLA gerada com sucesso:\n-> {caminho_arquivo}\n")
 
