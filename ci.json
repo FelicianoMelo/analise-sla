@@ -6,5 +6,21 @@
         "atencao": 0,
         "fora": 0,
         "total": 0
+    },
+    {
+        "CI": "LAC-BR-3-ClearanceFormal",
+        "otimo": 0,
+        "medio": 0,
+        "atencao": 0,
+        "fora": 0,
+        "total": 0
+    },
+    {
+        "CI": "LAC-BR-Clearance",
+        "otimo": 0,
+        "medio": 0,
+        "atencao": 0,
+        "fora": 0,
+        "total": 0
     }
 ]

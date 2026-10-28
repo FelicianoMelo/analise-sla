@@ -16,8 +16,7 @@ import gerar_total_sla as gts
 # ==============================================================================
 # CONFIGURAÇÃO DE AMBIENTE E LOGGING
 # ==============================================================================
-PASTA_TRABALHO = Path.home()  / "projetos/analise-sla/"
-print(PASTA_TRABALHO)
+PASTA_TRABALHO = Path(__file__).resolve().parent
 logger = logging.getLogger("SLA")
 logger.setLevel(logging.INFO)
 
@@ -41,19 +40,64 @@ DATA_ONTEM = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
 DATA_ATUAL_F = datetime.now().strftime("%d/%m/%Y")
 DATA_ONTEM_F = (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y")
 
+VALOR_NAO_ATRIBUIDO = "**Não Atribuido**"
+
+
 # ==============================================================================
 # FUNÇÕES DE MANIPULAÇÃO DE DATAFRAMES
 # ==============================================================================
+def preencher_nao_atribuido(df: pd.DataFrame) -> pd.DataFrame:
+    """Preenche valores nulos ou vazios nas colunas de atribuição com '**Não Atribuido**'."""
+    df = df.copy()
+    for col in ("Atribuição a", "Atribuído a", "Atribuido a"):
+        if col in df.columns:
+            df[col] = df[col].replace(r"^\s*$", pd.NA, regex=True).fillna(VALOR_NAO_ATRIBUIDO)
+    return df
+
+
 def agrupar_por(df: pd.DataFrame, coluna: str) -> pd.DataFrame:
     """Agrupa o DataFrame pela coluna especificada e adiciona a linha 'TOTAL GERAL'."""
-    if coluna not in df.columns:
-        logger.warning(f"Coluna '{coluna}' não encontrada no DataFrame.")
-        return pd.DataFrame(columns=[coluna, "Total"])
+    aliases = {
+        "CI afetado": ["IC afetado", "CI afetado"],
+        "IC afetado": ["IC afetado", "CI afetado"],
+        "Atribuição a": ["Atribuição a", "Atribuído a"],
+        "Atribuído a": ["Atribuído a", "Atribuição a"],
+    }
 
-    resultado = df.groupby(coluna).size().reset_index(name="Total")
+    coluna_origem = coluna
+    if coluna not in df.columns and coluna in aliases:
+        for alias in aliases[coluna]:
+            if alias in df.columns:
+                coluna_origem = alias
+                break
+
+    if coluna_origem not in df.columns or df.empty:
+        if coluna_origem not in df.columns:
+            logger.warning(f"Coluna '{coluna}' não encontrada no DataFrame.")
+        return pd.DataFrame({
+            coluna_origem: ["TOTAL GERAL"],
+            "Total": [0]
+        })
+
+    # Para colunas de atribuição, preenche vazios com '**Não Atribuido**'
+    if coluna_origem in ("Atribuição a", "Atribuído a", "Atribuido a"):
+        serie = df[coluna_origem].replace(r"^\s*$", pd.NA, regex=True).fillna(VALOR_NAO_ATRIBUIDO)
+    else:
+        serie = df[coluna_origem].dropna()
+
+    if serie.empty:
+        return pd.DataFrame({
+            coluna_origem: ["TOTAL GERAL"],
+            "Total": [0]
+        })
+
+    resultado = serie.groupby(serie).size().reset_index(name="Total")
+    resultado.columns = [coluna_origem, "Total"]
+    total_geral = int(resultado["Total"].sum()) if not resultado.empty else 0
+
     linha_total = pd.DataFrame({
-        coluna: ["TOTAL GERAL"],
-        "Total": [resultado["Total"].sum()]
+        coluna_origem: ["TOTAL GERAL"],
+        "Total": [total_geral]
     })
 
     return pd.concat([resultado, linha_total], axis=0, ignore_index=True)
@@ -204,7 +248,11 @@ def _aplicar_sla_resumo(ws, valores_sla: Dict[str, int]) -> None:
 # ==============================================================================
 def gerar_relatorio_encerrados(caminho_arquivo: Path, aba1: str, aba2: str, df_filtrado: pd.DataFrame) -> None:
     relatorio = ExcelReport(arquivo=str(caminho_arquivo), sheet_name=aba2, linhas_em_branco=2)
-    df_agrupa1 = agrupar_por(df_filtrado, "CI afetado")
+    coluna_ic = next(
+        (coluna for coluna in ("IC afetado", "CI afetado") if coluna in df_filtrado.columns),
+        "IC afetado",
+    )
+    df_agrupa1 = agrupar_por(df_filtrado, coluna_ic)
     df_agrupa2 = agrupar_por(df_filtrado, "Resolvido por")
 
     relatorio.gerar([df_agrupa1, df_agrupa2])
@@ -213,7 +261,11 @@ def gerar_relatorio_encerrados(caminho_arquivo: Path, aba1: str, aba2: str, df_f
 
 def gerar_relatorio_aberto(caminho_arquivo: Path, aba1: str, aba2: str, df_filtrado: pd.DataFrame) -> None:
     relatorio = ExcelReport(arquivo=str(caminho_arquivo), sheet_name=aba2, linhas_em_branco=2)
-    df_agrupa1 = agrupar_por(df_filtrado, "CI afetado")
+    coluna_ic = next(
+        (coluna for coluna in ("IC afetado", "CI afetado") if coluna in df_filtrado.columns),
+        "IC afetado",
+    )
+    df_agrupa1 = agrupar_por(df_filtrado, coluna_ic)
     coluna_atribuicao = next(
         (coluna for coluna in ("Atribuição a", "Atribuído a") if coluna in df_filtrado.columns),
         "Atribuído a",
@@ -224,7 +276,7 @@ def gerar_relatorio_aberto(caminho_arquivo: Path, aba1: str, aba2: str, df_filtr
     aplicar_estilos_excel(caminho_arquivo, aba1)
     
     #gera a metricas para o campo CI afetado
-    gerar_ci_json(caminho_arquivo)
+    gerar_ci_json(caminho_arquivo, coluna_ci=coluna_ic)
 
 
 def gerar_relatorio_aberto_sctask(caminho_arquivo: Path, aba1: str, aba2: str, df_filtrado: pd.DataFrame) -> None:
@@ -257,8 +309,7 @@ def cruzar_planilhas(arquivo1: Path, arquivo2: Path, arquivo_saida: Path, filtro
     df_plan3.insert(loc=0, column='% SLA Response', value='')
     df_plan3['% SLA Resolution'] = df_plan3['% SLA Resolution'].fillna(0)
     df_plan3 = df_plan3.query("Estado != 'Fechados' and Estado != 'Cancelado'")
-
-
+    df_plan3 = preencher_nao_atribuido(df_plan3)
 
     with pd.ExcelWriter(arquivo_saida, engine='openpyxl') as writer:
         df_plan3.to_excel(writer, sheet_name=aba1, index=False)
@@ -275,6 +326,7 @@ def planilhas_encerrados(arquivo1: Path, arquivo_saida: Path, filtro: str, aba1:
     df_plan1.rename(columns={df_plan1.columns[2]: 'Aberto por'}, inplace=True)
 
     df_filtrado = df_plan1[df_plan1.iloc[:, 5] == filtro]
+    df_filtrado = preencher_nao_atribuido(df_filtrado)
 
     with pd.ExcelWriter(arquivo_saida, engine='openpyxl') as writer:
         df_filtrado.to_excel(writer, sheet_name=aba1, index=False)
@@ -288,6 +340,7 @@ def planilhas_encerrados(arquivo1: Path, arquivo_saida: Path, filtro: str, aba1:
 
 def planilhas_encerrados_aberto_sctask(arquivo1: Path, arquivo_saida: Path, aba1: str, aba2: str) -> None:
     df_plan1 = pd.read_excel(arquivo1)
+    df_plan1 = preencher_nao_atribuido(df_plan1)
 
     with pd.ExcelWriter(arquivo_saida, engine='openpyxl') as writer:
         df_plan1.to_excel(writer, sheet_name=aba1, index=False)
@@ -341,18 +394,20 @@ def processar_configuracoes() -> None:
 
 def gerar_ci_json(
     arquivo_excel,
-    arquivo_json="ci.json",
-    coluna_ci="CI afetado"
+    arquivo_json=None,
+    coluna_ci=None,
 ):
     """
     Lê a coluna CI do Excel, remove duplicidades
     e gera um arquivo JSON.
 
     Args:
-        arquivo_excel (str): Caminho do arquivo Excel.
-        arquivo_json (str): Nome do arquivo JSON de saída.
-        coluna_ci (str): Nome da coluna contendo os CIs.
+        arquivo_excel (str | Path): Caminho do arquivo Excel.
+        arquivo_json (str | Path, optional): Caminho do arquivo JSON de saída.
+        coluna_ci (str, optional): Nome da coluna contendo os CIs.
     """
+    if arquivo_json is None:
+        arquivo_json = PASTA_TRABALHO / "ci.json"
 
     # Lê todas as abas
     abas = pd.read_excel(
@@ -362,11 +417,29 @@ def gerar_ci_json(
 
     cis = set()
 
+    # Carrega CIs já existentes no arquivo JSON para acumular entre relatórios
+    if Path(arquivo_json).exists():
+        try:
+            with open(arquivo_json, "r", encoding="utf-8") as f:
+                dados_existentes = json.load(f)
+                if isinstance(dados_existentes, list):
+                    for item in dados_existentes:
+                        if isinstance(item, dict) and "CI" in item:
+                            cis.add(item["CI"])
+        except Exception:
+            pass
+
     # Coleta CIs únicos de todas as abas
     for _, df in abas.items():
-        if coluna_ci in df.columns:
+        col = coluna_ci
+        if col is None or col not in df.columns:
+            col = next(
+                (c for c in ("IC afetado", "CI afetado") if c in df.columns),
+                None,
+            )
+        if col and col in df.columns:
             cis.update(
-                df[coluna_ci]
+                df[col]
                 .dropna()
                 .astype(str)
                 .unique()
@@ -392,8 +465,8 @@ def gerar_ci_json(
             indent=4
         )
 
-    print(
-        f"Arquivo '{arquivo_json}' atualizado com {len(dados)} CIs."
+    logger.info(
+        f"Arquivo '{Path(arquivo_json).name}' atualizado com {len(dados)} CIs."
     )
 
 
